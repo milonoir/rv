@@ -2,13 +2,21 @@ package scanner
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
+	"time"
 
 	ui "github.com/gizak/termui/v3"
 	"github.com/gizak/termui/v3/widgets"
 	"github.com/go-redis/redis/v8"
+)
+
+var (
+	ageNew    = 30 * time.Second
+	ageMedium = 5 * time.Minute
 )
 
 // widget manages a set of Scanners and renders their output to a widgets.Table.
@@ -46,7 +54,6 @@ func NewWidget(ctx context.Context, rc *redis.Client, scans map[string]*Config) 
 	table := widgets.NewTable()
 	width, height := ui.TerminalDimensions()
 	table.SetRect(0, 0, width, height)
-	table.Title = " Scanners "
 	table.RowSeparator = false
 	w.Table = table
 
@@ -56,22 +63,54 @@ func NewWidget(ctx context.Context, rc *redis.Client, scans map[string]*Config) 
 // Update implements the common.Widget interface.
 func (w *widget) Update() {
 	rows := [][]string{
-		{"name", "pattern", "count", "updated"},
+		{"Name", "Pattern", "Count", "Last scanned"},
 	}
 
+	now := time.Now()
 	for _, name := range w.order {
 		if scr, ok := w.scanners[name]; ok {
-			reply, ut := scr.LastReply()
-			updated := "-"
-			if !ut.IsZero() {
-				updated = ut.String()
-			}
-			rows = append(rows, []string{name, scr.Pattern(), strconv.Itoa(len(reply)), updated})
+			rows = append(rows, w.renderRow(name, scr, now))
 		}
 	}
-
+	w.Title = fmt.Sprintf(" Scanners [%d] ", len(w.order))
 	w.Rows = rows
 	ui.Render(w)
+}
+
+func (w *widget) renderRow(name string, scr Scanner, now time.Time) []string {
+	reply, ut, enabled := scr.State()
+
+	return []string{
+		w.renderName(name, enabled),
+		w.renderPattern(scr.Pattern()),
+		strconv.Itoa(len(reply)),
+		w.renderUpdated(ut, now),
+	}
+}
+
+func (w *widget) renderName(name string, enabled bool) string {
+	if enabled {
+		return fmt.Sprintf("[%s](fg:green)", name)
+	}
+	return fmt.Sprintf("[%s](fg:red)", name)
+}
+
+func (w *widget) renderPattern(pattern string) string {
+	return strings.ReplaceAll(pattern, "*", "[*](fg:yellow)")
+}
+
+func (w *widget) renderUpdated(updated, now time.Time) string {
+	age := now.Sub(updated).Round(time.Second)
+	switch {
+	case updated.IsZero():
+		return "-"
+	case age <= ageNew:
+		return fmt.Sprintf("[%s](fg:green) ago", age)
+	case age <= ageMedium:
+		return fmt.Sprintf("[%s](fg:yellow) ago", age)
+	default:
+		return fmt.Sprintf("[%s](fg:red) ago", age)
+	}
 }
 
 // Close implements the common.Widget interface.

@@ -16,10 +16,10 @@ dial_retries = 3
 [scans.machines]
 pattern = "machine:*"
 type = "hash"
-interval = "5s"
+interval = "15s"
 
 
 [scans.blabla]
 pattern = "blabla:*:blabla"
 type = "hash"
-interval = "15s"
+interval = "45s"

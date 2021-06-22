@@ -13,8 +13,8 @@ type Scanner interface {
 	// Pattern returns the configured pattern of the Redis scan command.
 	Pattern() string
 
-	// LastReply returns the last response and execution time of the Redis scan command.
-	LastReply() ([]string, time.Time)
+	// State returns the last response and execution time of the Redis scan command and whether the scanner is enabled.
+	State() ([]string, time.Time, bool)
 
 	// Enable enables the scanner.
 	Enable()

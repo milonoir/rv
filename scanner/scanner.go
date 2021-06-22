@@ -74,21 +74,25 @@ func (s *scanner) Pattern() string {
 }
 
 // LastReply implements the Scanner interface.
-func (s *scanner) LastReply() ([]string, time.Time) {
+func (s *scanner) State() ([]string, time.Time, bool) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
 	cpy := make([]string, len(s.reply))
 	copy(cpy, s.reply)
-	return cpy, s.updated
+	return cpy, s.updated, s.enabled
 }
 
 // Enable implements the Scanner interface.
 func (s *scanner) Enable() {
+	s.mtx.Lock()
 	s.enabled = true
+	s.mtx.Unlock()
 }
 
 // Disable implements the Scanner interface.
 func (s *scanner) Disable() {
+	s.mtx.Lock()
 	s.enabled = false
+	s.mtx.Unlock()
 }

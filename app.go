@@ -87,7 +87,7 @@ func (a *app) run() {
 
 	sw := scanner.NewWidget(ctx, a.rc, a.cfg.Scans)
 
-	t := time.NewTicker(1 * time.Second)
+	t := time.NewTicker(time.Second)
 	defer t.Stop()
 
 	uiEvents := ui.PollEvents()
