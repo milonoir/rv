@@ -1,0 +1,25 @@
+[redis]
+server = "localhost:6379"
+password = ""
+db = 0
+connect_timeout = "5s"
+idle_timeout = "10m"
+read_timeout = "1m"
+write_timeout = "1m"
+max_active = 0
+max_idle = 20
+wait = true
+test_on_borrow = true
+dial_retries = 3
+
+
+[scans.machines]
+pattern = "machine:*"
+type = "hash"
+interval = "5s"
+
+
+[scans.blabla]
+pattern = "blabla:*:blabla"
+type = "hash"
+interval = "15s"
