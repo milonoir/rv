@@ -7,6 +7,9 @@ type Widget interface {
 	// to a termui widget.
 	Update()
 
+	// Resize is called by the application when the terminal has been resized.
+	Resize(int, int)
+
 	// Close is called when the application exists. Widgets can implement this to return gracefully.
 	Close()
 }

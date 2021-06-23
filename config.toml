@@ -19,7 +19,19 @@ type = "hash"
 interval = "15s"
 
 
-[scans.blabla]
+[scans.abcdefghijklmnopqrstuvwxyz-]
 pattern = "blabla:*:blabla"
 type = "hash"
 interval = "45s"
+
+
+[scans.abcdefghijklmnopqrstuvwxyz-abcdefghijklmnopqrs]
+pattern = "abcdefgh:*:abcdefgh:*:abcdefgh:*:abcdefgh:*:abcdefgh:*:abcdefgh:*:abcdefgh:*:abcdefgh:*:abcdefgh:*:abcdefgh:*:abcdefgh:*:abcdefgh:*"
+type = "hash"
+interval = "85s"
+
+
+[scans."foobar whatever"]
+pattern = "foo:bar"
+type = "hash"
+interval = "20s"

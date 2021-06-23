@@ -1,7 +1,7 @@
 package redis
 
 import (
-	"milonoir/rv/common"
+	"github.com/milonoir/rv/common"
 )
 
 // Config is the configuration for a Redis server.

@@ -1,4 +1,4 @@
-module milonoir/rv
+module github.com/milonoir/rv
 
 go 1.16
 

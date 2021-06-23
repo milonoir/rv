@@ -8,9 +8,9 @@ import (
 	"github.com/BurntSushi/toml"
 	ui "github.com/gizak/termui/v3"
 	r "github.com/go-redis/redis/v8"
-	"milonoir/rv/common"
-	"milonoir/rv/redis"
-	"milonoir/rv/scanner"
+	"github.com/milonoir/rv/common"
+	"github.com/milonoir/rv/redis"
+	"github.com/milonoir/rv/scanner"
 )
 
 // config represents the application configuration.
@@ -80,14 +80,14 @@ func (a *app) initUI() error {
 	return ui.Init()
 }
 
-// run is the main loop of the application.
+// run is the main event loop of the application.
 func (a *app) run() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	sw := scanner.NewWidget(ctx, a.rc, a.cfg.Scans)
 
-	t := time.NewTicker(time.Second)
+	t := time.NewTicker(100 * time.Millisecond)
 	defer t.Stop()
 
 	uiEvents := ui.PollEvents()
@@ -100,6 +100,14 @@ func (a *app) run() {
 			case "q", "<C-c>":
 				a.handleQuit(sw)
 				return
+			case "<Resize>":
+				payload := e.Payload.(ui.Resize)
+				a.resize(payload.Width, payload.Height, sw)
+				ui.Clear()
+			case "<Up>":
+				sw.ScrollUp()
+			case "<Down>":
+				sw.ScrollDown()
 			}
 		}
 	}
@@ -112,10 +120,17 @@ func (a *app) update(ws ...common.Widget) {
 	}
 }
 
+func (a *app) resize(width, height int, ws ...common.Widget) {
+	for _, w := range ws {
+		w.Resize(width, height)
+	}
+}
+
 // handleQuit invokes the Close() method on each provided widget and closes termui.
 func (a *app) handleQuit(ws ...common.Widget) {
 	for _, w := range ws {
 		w.Close()
 	}
+	ui.Clear()
 	ui.Close()
 }
