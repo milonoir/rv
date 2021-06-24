@@ -8,7 +8,7 @@ type Widget interface {
 	Update()
 
 	// Resize is called by the application when the terminal has been resized.
-	Resize(int, int)
+	Resize(int, int, int, int)
 
 	// Close is called when the application exists. Widgets can implement this to return gracefully.
 	Close()

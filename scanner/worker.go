@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -14,6 +15,7 @@ type worker struct {
 
 	rc      *redis.Client
 	ctx     context.Context
+	name    string
 	enabled bool
 	reply   []string
 	updated time.Time
@@ -22,11 +24,12 @@ type worker struct {
 }
 
 // newWorker returns a configured worker.
-func newWorker(ctx context.Context, rc *redis.Client, cfg *Config) Worker {
+func newWorker(ctx context.Context, rc *redis.Client, name string, cfg *Config) Worker {
 	return &worker{
 		Config:  cfg,
 		rc:      rc,
 		ctx:     ctx,
+		name:    name,
 		enabled: true,
 		err:     make(chan string, 1),
 	}
@@ -63,7 +66,7 @@ func (w *worker) run() {
 	if err := iter.Err(); err != nil {
 		// Try sending the error.
 		select {
-		case w.err <- err.Error():
+		case w.err <- fmt.Sprintf("(worker: %s): %s", w.name, err.Error()):
 		default:
 		}
 	}

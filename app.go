@@ -3,15 +3,25 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
 	ui "github.com/gizak/termui/v3"
-	"github.com/gizak/termui/v3/widgets"
 	r "github.com/go-redis/redis/v8"
 	"github.com/milonoir/rv/common"
+	"github.com/milonoir/rv/logger"
 	"github.com/milonoir/rv/redis"
 	"github.com/milonoir/rv/scanner"
+	"github.com/milonoir/rv/textbox"
+)
+
+const (
+	scannerUsage = `  [<Up>](fg:yellow)/[<Down>](fg:yellow)   move selection up/down   [<Enter>](fg:yellow) select            [<m>](fg:yellow) view messages 
+[<PgUp>](fg:yellow)/[<PgDown>](fg:yellow) scroll up/down           [<e>](fg:yellow)     enable scanner
+[<Home>](fg:yellow)/[<End>](fg:yellow)    move to top/bottom       [<d>](fg:yellow)     disable scanner   [<q>](fg:yellow) quit`
+	messagesUsage = `[<Esc>](fg:yellow) back
+  [<q>](fg:yellow) quit`
 )
 
 var (
@@ -29,7 +39,14 @@ type app struct {
 	cfg *config
 	rc  *r.Client
 
-	scanner scanner.Scanner
+	scanner  scanner.Scanner
+	helper   textbox.TextBox
+	messages textbox.TextBox
+	logger   logger.Logger
+
+	messagesActive bool
+
+	ch chan string
 }
 
 // newApp creates and configures a new app.
@@ -89,7 +106,22 @@ func (a *app) initUI() error {
 
 // initWidgets initializes the widgets.
 func (a *app) initWidgets(ctx context.Context) {
+	a.ch = make(chan string, 1)
+
+	// Scanner widget
 	a.scanner = scanner.NewScanner(ctx, a.rc, a.cfg.Scans)
+
+	// Helper widget
+	a.helper = textbox.NewTextBox(" Help ")
+	a.helper.SetText(scannerUsage)
+
+	// Logger widget
+	a.logger = logger.NewLogger(ctx, a.ch)
+
+	// Messages widget
+	a.messages = textbox.NewTextBox(" Messages ")
+
+	a.resize(ui.TerminalDimensions())
 }
 
 // run is the main event loop of the application.
@@ -99,10 +131,6 @@ func (a *app) run() {
 
 	a.initWidgets(ctx)
 
-	st := widgets.NewParagraph()
-	w, h := ui.TerminalDimensions()
-	st.SetRect(0, h-3, w, h)
-
 	t := time.NewTicker(updateInterval)
 	defer t.Stop()
 
@@ -110,60 +138,85 @@ func (a *app) run() {
 	for {
 		select {
 		case <-t.C:
-			a.update(a.scanner)
-			ui.Render(st)
+			a.update()
 		case e := <-uiEvents:
 			switch e.ID {
-			case "q", "<C-c>":
-				a.handleQuit(a.scanner)
-				return
 			case "<Resize>":
 				payload := e.Payload.(ui.Resize)
-				a.resize(payload.Width, payload.Height, a.scanner)
-				ui.Clear()
-			case "<Up>":
-				a.scanner.ScrollUp()
-			case "<Down>":
-				a.scanner.ScrollDown()
-			case "<PageUp>":
-				a.scanner.ScrollPageUp()
-			case "<PageDown>":
-				a.scanner.ScrollPageDown()
-			case "<Home>":
-				a.scanner.ScrollTop()
-			case "<End>":
-				a.scanner.ScrollBottom()
-			case "<Enter>":
-				st.Text = a.scanner.Select()
-				// TODO: send selection to viewer
-			case "e":
-				a.scanner.Enable()
-			case "d":
-				a.scanner.Disable()
+				a.resize(payload.Width, payload.Height)
+			case "q", "<C-c>":
+				a.handleQuit()
+				return
+			}
+
+			switch {
+			case a.messagesActive:
+				switch e.ID {
+				case "<Escape>":
+					a.messagesActive = false
+					a.helper.SetText(scannerUsage)
+				}
+			default:
+				switch e.ID {
+				case "<Up>":
+					a.scanner.ScrollUp()
+				case "<Down>":
+					a.scanner.ScrollDown()
+				case "<PageUp>":
+					a.scanner.ScrollPageUp()
+				case "<PageDown>":
+					a.scanner.ScrollPageDown()
+				case "<Home>":
+					a.scanner.ScrollTop()
+				case "<End>":
+					a.scanner.ScrollBottom()
+				case "<Enter>":
+					// TODO: send selection to viewer
+					a.ch <- a.scanner.Select()
+				case "e":
+					a.scanner.Enable()
+				case "d":
+					a.scanner.Disable()
+				case "m":
+					a.messages.SetText(strings.Join(a.logger.Messages(), "\n"))
+					a.helper.SetText(messagesUsage)
+					a.messagesActive = true
+				}
 			}
 		}
 	}
 }
 
 // update invokes the Update() method on each widget.
-func (a *app) update(ws ...common.Widget) {
-	for _, w := range ws {
-		w.Update()
+func (a *app) update() {
+	a.helper.Update()
+	a.logger.Update()
+	if a.messagesActive {
+		a.messages.Update()
+	} else {
+		a.scanner.Update()
 	}
 }
 
-// resize invokes the Resize() method on each widget.
-func (a *app) resize(width, height int, ws ...common.Widget) {
-	for _, w := range ws {
-		w.Resize(width, height)
-	}
+// resize resizes all widgets.
+func (a *app) resize(w, h int) {
+	a.scanner.Resize(0, 0, w, h-5)
+	a.helper.Resize(0, h-5, w/2, h)
+	a.logger.Resize(w/2, h-5, w, h)
+	a.messages.Resize(0, 0, w, h-5)
+
+	ui.Clear()
 }
 
 // handleQuit invokes the Close() method on each widget and closes termui.
-func (a *app) handleQuit(ws ...common.Widget) {
-	for _, w := range ws {
-		w.Close()
-	}
+func (a *app) handleQuit() {
+	close(a.ch)
+
+	a.messages.Close()
+	a.scanner.Close()
+	a.helper.Close()
+	a.logger.Close()
+
 	ui.Clear()
 	ui.Close()
 }

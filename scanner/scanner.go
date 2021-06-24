@@ -45,7 +45,7 @@ func NewScanner(ctx context.Context, rc *redis.Client, configs map[string]*Confi
 	}
 
 	for name, cfg := range configs {
-		w := newWorker(ctx, rc, cfg)
+		w := newWorker(ctx, rc, name, cfg)
 		s.workers[name] = w
 		s.wg.Add(1)
 		go func() {
@@ -58,15 +58,14 @@ func NewScanner(ctx context.Context, rc *redis.Client, configs map[string]*Confi
 
 	s.List = widgets.NewList()
 	s.SelectedRowStyle = ui.NewStyle(ui.ColorWhite, ui.ColorBlue)
-	s.Resize(ui.TerminalDimensions())
 
 	return s
 }
 
 // Resize implements the common.Widget interface.
-func (s *scanner) Resize(width, height int) {
-	s.width = width
-	s.SetRect(0, 0, width, height-3)
+func (s *scanner) Resize(x1, y1, x2, y2 int) {
+	s.width = x2
+	s.SetRect(x1, y1, x2, y2)
 }
 
 // Update implements the common.Widget interface.
@@ -80,7 +79,7 @@ func (s *scanner) Update() {
 			rows = append(rows, s.renderRow(name, w, now, cws))
 		}
 	}
-	s.Title = fmt.Sprintf("Scanners [%d]", n)
+	s.Title = fmt.Sprintf(" Scanners [%d] ", n)
 	s.Rows = rows
 	ui.Render(s)
 }
@@ -143,6 +142,7 @@ func (s *scanner) renderUpdated(updated, now time.Time) string {
 }
 
 // Close implements the common.Widget interface.
+// Aborts all workers and waits for them to return.
 func (s *scanner) Close() {
 	s.cancel()
 	s.wg.Wait()
