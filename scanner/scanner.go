@@ -83,7 +83,7 @@ func NewScanner(ctx context.Context, rc *redis.Client, configs map[string]*Confi
 
 // Resize implements the common.Widget interface.
 func (s *scanner) Resize(x1, y1, x2, y2 int) {
-	s.width = x2
+	s.width = x2 - x1
 	s.SetRect(x1, y1, x2, y2)
 }
 

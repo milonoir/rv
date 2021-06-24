@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/milonoir/rv/common"
+	r "github.com/milonoir/rv/redis"
 )
 
 // Worker provides an interface to interact with workers.
@@ -16,7 +17,7 @@ type Worker interface {
 	IsSingle() bool
 
 	// Pattern returns the configured pattern of the Redis scan command and the type of the matching keys.
-	Pattern() (string, string)
+	Pattern() (string, r.DataType)
 
 	// State returns the last response and execution time of the Redis scan command and whether the worker is enabled.
 	State() ([]string, time.Time, bool)
@@ -31,7 +32,7 @@ type Worker interface {
 	ErrCh() <-chan string
 }
 
-// Scanner provides an interface to interact with the scanner scanner.
+// Scanner provides an interface to interact with the scanner widget.
 type Scanner interface {
 	common.Widget
 	common.Scrollable

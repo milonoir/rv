@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	r "github.com/milonoir/rv/redis"
 )
 
 // worker implements the Worker interface.
@@ -78,7 +79,7 @@ func (w *worker) run() {
 }
 
 // Pattern implements the Worker interface.
-func (w *worker) Pattern() (string, string) {
+func (w *worker) Pattern() (string, r.DataType) {
 	return w.Config.Pattern, w.Type
 }
 

@@ -24,3 +24,9 @@ type Scrollable interface {
 	ScrollTop()
 	ScrollBottom()
 }
+
+type TextBox interface {
+	Widget
+
+	SetText(string)
+}

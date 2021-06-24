@@ -14,6 +14,8 @@ const (
 	prevSize = 3
 )
 
+// logger collects messages from different sources and stores them in a buffer.
+// It also renders a preview of the last few messages into a widgets.Paragraph.
 type logger struct {
 	*widgets.Paragraph
 
@@ -23,6 +25,7 @@ type logger struct {
 	wg       sync.WaitGroup
 }
 
+// NewLogger returns a fully configured logger.
 func NewLogger(ctx context.Context, channels ...<-chan string) *logger {
 	ctx, cancel := context.WithCancel(ctx)
 
@@ -45,19 +48,20 @@ func NewLogger(ctx context.Context, channels ...<-chan string) *logger {
 	return l
 }
 
+// readChan is a worker goroutine for worker that pushes incoming messages from the provided
+// channel into the buffer.
 func (l *logger) readChan(ctx context.Context, in <-chan string) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case m := <-in:
-			l.mtx.Lock()
-			l.messages = append(l.messages, m)
-			l.mtx.Unlock()
+			l.push(m)
 		}
 	}
 }
 
+// push is a thread-safe method to push a message into the buffer.
 func (l *logger) push(m string) {
 	l.mtx.Lock()
 	defer l.mtx.Unlock()
@@ -68,6 +72,7 @@ func (l *logger) push(m string) {
 	}
 }
 
+// Update implements the common.Widget interface.
 func (l *logger) Update() {
 	l.mtx.Lock()
 	n := len(l.messages) - prevSize
@@ -79,15 +84,18 @@ func (l *logger) Update() {
 	ui.Render(l)
 }
 
+// Resize implements the common.Widget interface.
 func (l *logger) Resize(x1, y1, x2, y2 int) {
 	l.SetRect(x1, y1, x2, y2)
 }
 
+// Close implements the common.Widget interface.
 func (l *logger) Close() {
 	l.cancel()
 	l.wg.Wait()
 }
 
+// Messages implements the Logger interface.
 func (l *logger) Messages() []string {
 	l.mtx.Lock()
 	m := make([]string, len(l.messages))

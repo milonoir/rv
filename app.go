@@ -13,7 +13,6 @@ import (
 	"github.com/milonoir/rv/logger"
 	"github.com/milonoir/rv/redis"
 	"github.com/milonoir/rv/scanner"
-	"github.com/milonoir/rv/textbox"
 )
 
 const (
@@ -40,8 +39,8 @@ type app struct {
 	rc  *r.Client
 
 	scanner  scanner.Scanner
-	helper   textbox.TextBox
-	messages textbox.TextBox
+	helper   common.TextBox
+	messages common.TextBox
 	logger   logger.Logger
 
 	messagesVisible bool
@@ -112,14 +111,14 @@ func (a *app) initWidgets(ctx context.Context) {
 	a.scanner = scanner.NewScanner(ctx, a.rc, a.cfg.Scans)
 
 	// Helper widget
-	a.helper = textbox.NewTextBox(" Help ")
+	a.helper = common.NewTextBox(" Help ")
 	a.helper.SetText(scannerUsage)
 
 	// Logger widget
 	a.logger = logger.NewLogger(ctx, a.msgCh, a.scanner.Messages())
 
 	// Messages widget
-	a.messages = textbox.NewTextBox(" Messages ")
+	a.messages = common.NewTextBox(" Messages ")
 
 	a.resize(ui.TerminalDimensions())
 }

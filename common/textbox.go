@@ -1,4 +1,4 @@
-package textbox
+package common
 
 import (
 	ui "github.com/gizak/termui/v3"
