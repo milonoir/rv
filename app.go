@@ -7,10 +7,15 @@ import (
 
 	"github.com/BurntSushi/toml"
 	ui "github.com/gizak/termui/v3"
+	"github.com/gizak/termui/v3/widgets"
 	r "github.com/go-redis/redis/v8"
 	"github.com/milonoir/rv/common"
 	"github.com/milonoir/rv/redis"
 	"github.com/milonoir/rv/scanner"
+)
+
+var (
+	updateInterval = 100 * time.Millisecond
 )
 
 // config represents the application configuration.
@@ -23,6 +28,8 @@ type config struct {
 type app struct {
 	cfg *config
 	rc  *r.Client
+
+	scanner scanner.Scanner
 }
 
 // newApp creates and configures a new app.
@@ -80,53 +87,79 @@ func (a *app) initUI() error {
 	return ui.Init()
 }
 
+// initWidgets initializes the widgets.
+func (a *app) initWidgets(ctx context.Context) {
+	a.scanner = scanner.NewScanner(ctx, a.rc, a.cfg.Scans)
+}
+
 // run is the main event loop of the application.
 func (a *app) run() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sw := scanner.NewWidget(ctx, a.rc, a.cfg.Scans)
+	a.initWidgets(ctx)
 
-	t := time.NewTicker(100 * time.Millisecond)
+	st := widgets.NewParagraph()
+	w, h := ui.TerminalDimensions()
+	st.SetRect(0, h-3, w, h)
+
+	t := time.NewTicker(updateInterval)
 	defer t.Stop()
 
 	uiEvents := ui.PollEvents()
 	for {
 		select {
 		case <-t.C:
-			a.update(sw)
+			a.update(a.scanner)
+			ui.Render(st)
 		case e := <-uiEvents:
 			switch e.ID {
 			case "q", "<C-c>":
-				a.handleQuit(sw)
+				a.handleQuit(a.scanner)
 				return
 			case "<Resize>":
 				payload := e.Payload.(ui.Resize)
-				a.resize(payload.Width, payload.Height, sw)
+				a.resize(payload.Width, payload.Height, a.scanner)
 				ui.Clear()
 			case "<Up>":
-				sw.ScrollUp()
+				a.scanner.ScrollUp()
 			case "<Down>":
-				sw.ScrollDown()
+				a.scanner.ScrollDown()
+			case "<PageUp>":
+				a.scanner.ScrollPageUp()
+			case "<PageDown>":
+				a.scanner.ScrollPageDown()
+			case "<Home>":
+				a.scanner.ScrollTop()
+			case "<End>":
+				a.scanner.ScrollBottom()
+			case "<Enter>":
+				st.Text = a.scanner.Select()
+				// TODO: send selection to viewer
+			case "e":
+				a.scanner.Enable()
+			case "d":
+				a.scanner.Disable()
 			}
 		}
 	}
 }
 
-// update invokes the Update() method on each provided widget.
+// update invokes the Update() method on each widget.
 func (a *app) update(ws ...common.Widget) {
 	for _, w := range ws {
 		w.Update()
 	}
 }
 
+// resize invokes the Resize() method on each widget.
 func (a *app) resize(width, height int, ws ...common.Widget) {
 	for _, w := range ws {
 		w.Resize(width, height)
 	}
 }
 
-// handleQuit invokes the Close() method on each provided widget and closes termui.
+// handleQuit invokes the Close() method on each widget and closes termui.
 func (a *app) handleQuit(ws ...common.Widget) {
 	for _, w := range ws {
 		w.Close()

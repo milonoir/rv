@@ -13,3 +13,14 @@ type Widget interface {
 	// Close is called when the application exists. Widgets can implement this to return gracefully.
 	Close()
 }
+
+// Scrollable is implemented by widgets which can scroll.
+// Ideally, this is inherited from the termui List widget.
+type Scrollable interface {
+	ScrollUp()
+	ScrollDown()
+	ScrollPageUp()
+	ScrollPageDown()
+	ScrollTop()
+	ScrollBottom()
+}
