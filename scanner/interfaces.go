@@ -44,4 +44,7 @@ type Scanner interface {
 
 	// Disable disables the selected worker.
 	Disable()
+
+	// Messages returns the messages channel of the scanner.
+	Messages() <-chan string
 }

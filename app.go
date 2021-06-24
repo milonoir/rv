@@ -44,9 +44,9 @@ type app struct {
 	messages textbox.TextBox
 	logger   logger.Logger
 
-	messagesActive bool
+	messagesVisible bool
 
-	ch chan string
+	msgCh chan string
 }
 
 // newApp creates and configures a new app.
@@ -106,7 +106,7 @@ func (a *app) initUI() error {
 
 // initWidgets initializes the widgets.
 func (a *app) initWidgets(ctx context.Context) {
-	a.ch = make(chan string, 1)
+	a.msgCh = make(chan string, 1)
 
 	// Scanner widget
 	a.scanner = scanner.NewScanner(ctx, a.rc, a.cfg.Scans)
@@ -116,7 +116,7 @@ func (a *app) initWidgets(ctx context.Context) {
 	a.helper.SetText(scannerUsage)
 
 	// Logger widget
-	a.logger = logger.NewLogger(ctx, a.ch)
+	a.logger = logger.NewLogger(ctx, a.msgCh, a.scanner.Messages())
 
 	// Messages widget
 	a.messages = textbox.NewTextBox(" Messages ")
@@ -150,10 +150,10 @@ func (a *app) run() {
 			}
 
 			switch {
-			case a.messagesActive:
+			case a.messagesVisible:
 				switch e.ID {
 				case "<Escape>":
-					a.messagesActive = false
+					a.messagesVisible = false
 					a.helper.SetText(scannerUsage)
 				}
 			default:
@@ -171,8 +171,8 @@ func (a *app) run() {
 				case "<End>":
 					a.scanner.ScrollBottom()
 				case "<Enter>":
-					// TODO: send selection to viewer
-					a.ch <- a.scanner.Select()
+					// TODO: send selection to details viewer
+					a.msgCh <- a.scanner.Select()
 				case "e":
 					a.scanner.Enable()
 				case "d":
@@ -180,7 +180,7 @@ func (a *app) run() {
 				case "m":
 					a.messages.SetText(strings.Join(a.logger.Messages(), "\n"))
 					a.helper.SetText(messagesUsage)
-					a.messagesActive = true
+					a.messagesVisible = true
 				}
 			}
 		}
@@ -191,7 +191,7 @@ func (a *app) run() {
 func (a *app) update() {
 	a.helper.Update()
 	a.logger.Update()
-	if a.messagesActive {
+	if a.messagesVisible {
 		a.messages.Update()
 	} else {
 		a.scanner.Update()
@@ -210,7 +210,7 @@ func (a *app) resize(w, h int) {
 
 // handleQuit invokes the Close() method on each widget and closes termui.
 func (a *app) handleQuit() {
-	close(a.ch)
+	close(a.msgCh)
 
 	a.messages.Close()
 	a.scanner.Close()

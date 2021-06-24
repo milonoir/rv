@@ -27,30 +27,49 @@ var (
 type scanner struct {
 	*widgets.List
 
-	workers map[string]Worker
-	order   []string
-	wg      sync.WaitGroup
-	cancel  context.CancelFunc
-	width   int
+	workers  map[string]Worker
+	order    []string
+	wg       sync.WaitGroup
+	cancel   context.CancelFunc
+	width    int
+	messages chan string
 }
 
 // NewScanner returns a fully configured scanner.
 func NewScanner(ctx context.Context, rc *redis.Client, configs map[string]*Config) Scanner {
 	ctx, cancel := context.WithCancel(ctx)
 
+	cn := len(configs)
 	s := &scanner{
-		order:   make([]string, 0, len(configs)),
-		workers: make(map[string]Worker, len(configs)),
-		cancel:  cancel,
+		order:    make([]string, 0, cn),
+		workers:  make(map[string]Worker, cn),
+		cancel:   cancel,
+		messages: make(chan string, cn),
 	}
 
 	for name, cfg := range configs {
 		w := newWorker(ctx, rc, name, cfg)
 		s.workers[name] = w
-		s.wg.Add(1)
+		s.wg.Add(2)
+		// Main worker goroutine.
 		go func() {
-			w.Run()
 			defer s.wg.Done()
+			w.Run()
+		}()
+		// Worker messages fan-in goroutine.
+		go func() {
+			defer s.wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case m := <-w.ErrCh():
+					select {
+					case s.messages <- m:
+					default:
+					}
+				}
+			}
 		}()
 		s.order = append(s.order, name)
 	}
@@ -150,7 +169,7 @@ func (s *scanner) Close() {
 
 // Select implements the Scanner interface.
 func (s *scanner) Select() string {
-	if w := s.selectWorker(); w != nil {
+	if _, w := s.selectWorker(); w != nil {
 		p, t := w.Pattern()
 		return fmt.Sprintf("(%s) %s", t, p)
 	}
@@ -159,22 +178,29 @@ func (s *scanner) Select() string {
 
 // Enable implements the Scanner interface.
 func (s *scanner) Enable() {
-	if w := s.selectWorker(); s != nil {
+	if name, w := s.selectWorker(); w != nil {
 		w.Enable()
+		s.messages <- fmt.Sprintf("[enabled](fg:green) worker %q", name)
 	}
 }
 
 // Disable implements the Scanner interface.
 func (s *scanner) Disable() {
-	if w := s.selectWorker(); s != nil {
+	if name, w := s.selectWorker(); w != nil {
 		w.Disable()
+		s.messages <- fmt.Sprintf("[disabled](fg:red) worker %q", name)
 	}
 }
 
-func (s *scanner) selectWorker() Worker {
+func (s *scanner) selectWorker() (string, Worker) {
 	name := s.order[s.List.SelectedRow]
 	if w, ok := s.workers[name]; ok {
-		return w
+		return name, w
 	}
-	return nil
+	return "", nil
+}
+
+// Messages implements the Scanner interface.
+func (s *scanner) Messages() <-chan string {
+	return s.messages
 }
