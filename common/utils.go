@@ -11,11 +11,11 @@ import (
 func LoadFile(file string) ([]byte, error) {
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
-		return nil, fmt.Errorf("read file %q: %w", file, err)
+		return nil, err
 	}
 
 	if len(b) == 0 {
-		return nil, fmt.Errorf("empty file: %q", file)
+		return nil, fmt.Errorf("read %s: empty file", file)
 	}
 
 	return b, nil

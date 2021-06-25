@@ -8,10 +8,10 @@ import (
 
 	"github.com/BurntSushi/toml"
 	ui "github.com/gizak/termui/v3"
-	r "github.com/go-redis/redis/v8"
+	"github.com/go-redis/redis/v8"
 	"github.com/milonoir/rv/common"
 	"github.com/milonoir/rv/logger"
-	"github.com/milonoir/rv/redis"
+	r "github.com/milonoir/rv/redis"
 	"github.com/milonoir/rv/scanner"
 )
 
@@ -36,14 +36,14 @@ var (
 
 // config represents the application configuration.
 type config struct {
-	Redis *redis.Config
+	Redis *r.Config
 	Scans map[string]*scanner.Config
 }
 
 // app represents the main application.
 type app struct {
 	cfg *config
-	rc  *r.Client
+	rc  *redis.Client
 
 	scanner  scanner.Scanner
 	selector scanner.Selector
@@ -68,7 +68,7 @@ func newApp(cfgFile string) (*app, error) {
 
 	cfg := &config{}
 	if _, err = toml.Decode(string(f), cfg); err != nil {
-		return nil, fmt.Errorf("parse config: %w", err)
+		return nil, fmt.Errorf("parse toml config: %w", err)
 	}
 
 	return &app{
@@ -91,10 +91,15 @@ func (a *app) setup() error {
 
 // setupRedis configures the Redis client and tests its connection to the Redis server.
 func (a *app) setupRedis() error {
-	a.rc = r.NewClient(&r.Options{
-		Addr:     a.cfg.Redis.Server,
-		Password: a.cfg.Redis.Password,
-		DB:       a.cfg.Redis.DB,
+	a.rc = redis.NewClient(&redis.Options{
+		Addr:         a.cfg.Redis.Server,
+		Password:     a.cfg.Redis.Password,
+		DB:           a.cfg.Redis.DB,
+		DialTimeout:  a.cfg.Redis.DialTimeout.Duration,
+		IdleTimeout:  a.cfg.Redis.IdleTimeout.Duration,
+		ReadTimeout:  a.cfg.Redis.ReadTimeout.Duration,
+		WriteTimeout: a.cfg.Redis.WriteTimeout.Duration,
+		MaxRetries:   a.cfg.Redis.MaxRetries,
 	})
 
 	// Test connection.
