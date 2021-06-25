@@ -15,8 +15,8 @@
 
 ## Usage
 
-1. Create a `config.toml` (see example config below)
 1. `go build` from project root
+1. Create a `config.toml` (see [example config](#example-minimum-config))
 1. `./rv` or `rv.exe` (optionally pass a config file argument, by default `config.toml` will be used)
 
 
