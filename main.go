@@ -6,11 +6,11 @@ import (
 )
 
 const (
-	defaultConfig = "config.toml"
+	defaultConfigFile = "config.toml"
 )
 
 func main() {
-	cfg := defaultConfig
+	cfg := defaultConfigFile
 	if len(os.Args) > 1 {
 		cfg = os.Args[1]
 	}
