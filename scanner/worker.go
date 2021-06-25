@@ -111,3 +111,8 @@ func (w *worker) Disable() {
 func (w *worker) ErrCh() <-chan string {
 	return w.err
 }
+
+// Messages implements the common.Messenger interface.
+func (w *worker) Messages() <-chan string {
+	return w.err
+}

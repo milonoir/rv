@@ -11,6 +11,7 @@ import (
 	ui "github.com/gizak/termui/v3"
 	"github.com/gizak/termui/v3/widgets"
 	"github.com/go-redis/redis/v8"
+	r "github.com/milonoir/rv/redis"
 )
 
 const (
@@ -36,7 +37,7 @@ type scanner struct {
 }
 
 // NewScanner returns a fully configured scanner.
-func NewScanner(ctx context.Context, rc *redis.Client, configs map[string]*Config) Scanner {
+func NewScanner(ctx context.Context, rc *redis.Client, configs map[string]*Config) *scanner {
 	ctx, cancel := context.WithCancel(ctx)
 
 	cn := len(configs)
@@ -168,12 +169,13 @@ func (s *scanner) Close() {
 }
 
 // Select implements the Scanner interface.
-func (s *scanner) Select() string {
+func (s *scanner) Select() ([]string, r.DataType) {
 	if _, w := s.selectWorker(); w != nil {
-		p, t := w.Pattern()
-		return fmt.Sprintf("(%s) %s", t, p)
+		l, _, _ := w.State()
+		_, t := w.Pattern()
+		return l, t
 	}
-	return ""
+	return nil, ""
 }
 
 // Enable implements the Scanner interface.

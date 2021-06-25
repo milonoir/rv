@@ -33,5 +33,5 @@ interval = "85s"
 
 [scans."foobar whatever"]
 pattern = "foo:bar"
-type = "hash"
+type = "key"
 interval = "20s"
