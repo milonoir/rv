@@ -165,6 +165,7 @@ func (a *app) run() {
 				return
 			}
 
+			// Dispatching events to appropriate handlers.
 			switch {
 			case a.viewerVisible:
 				a.handleViewerEvents(e)
@@ -234,7 +235,6 @@ func (a *app) handleSelectorEvents(ctx context.Context, e ui.Event) {
 		c, cancel := context.WithTimeout(ctx, viewerTimeout)
 		defer cancel()
 		key, rt := a.selector.Select()
-		a.msgCh <- fmt.Sprintf("rendering view for key: %s, type: %s", key, rt)
 		a.viewer.View(c, key, rt)
 		a.helper.SetText(viewerUsage)
 		a.selectorVisible = false
@@ -251,6 +251,18 @@ func (a *app) handleViewerEvents(e ui.Event) {
 		a.viewerVisible = false
 		a.selectorVisible = true
 		a.helper.SetText(selectorUsage)
+	case "<Up>":
+		a.viewer.ScrollUp()
+	case "<Down>":
+		a.viewer.ScrollDown()
+	case "<PageUp>":
+		a.viewer.ScrollPageUp()
+	case "<PageDown>":
+		a.viewer.ScrollPageDown()
+	case "<Home>":
+		a.viewer.ScrollTop()
+	case "<End>":
+		a.viewer.ScrollBottom()
 	}
 }
 

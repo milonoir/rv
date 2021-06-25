@@ -2,7 +2,6 @@ package scanner
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/go-redis/redis/v8"
 	r "github.com/milonoir/rv/redis"
@@ -50,16 +49,8 @@ func (e *executor) getSet(ctx context.Context, key string) ([]string, error) {
 	return e.rc.SMembers(ctx, key).Result()
 }
 
-func (e *executor) getSortedSet(ctx context.Context, key string) (map[string]float64, error) {
-	zs, err := e.rc.ZRangeWithScores(ctx, key, 0, -1).Result()
-	if err != nil {
-		return nil, err
-	}
-	m := make(map[string]float64, len(zs))
-	for _, z := range zs {
-		m[fmt.Sprint(z.Member)] = z.Score
-	}
-	return m, nil
+func (e *executor) getSortedSet(ctx context.Context, key string) ([]redis.Z, error) {
+	return e.rc.ZRangeWithScores(ctx, key, 0, -1).Result()
 }
 
 func (e *executor) getHash(ctx context.Context, key string) (map[string]string, error) {

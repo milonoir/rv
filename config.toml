@@ -35,3 +35,21 @@ interval = "85s"
 pattern = "foo:bar"
 type = "key"
 interval = "20s"
+
+
+[scans.lists]
+pattern = "*:list"
+type = "list"
+interval = "10s"
+
+
+[scans.sets]
+pattern = "*:set"
+type = "set"
+interval = "10s"
+
+
+[scans."sorted sets"]
+pattern = "*:zset"
+type = "zset"
+interval = "10s"
